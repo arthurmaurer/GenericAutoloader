@@ -23,18 +23,29 @@ class GenericAutoloader
 
     public function load($className)
     {
-        $root = $this->getNamespaceRoot($className);
+        $vendor = $this->getVendorFromClassName($className);
 
-        if (array_key_exists($root, $this->vendors))
+        if ($vendor !== null)
         {
-            $classNameWithoutRoot = $this->removeNamespaceRoot($className);
-            $classPath = str_replace('\\', "/", $classNameWithoutRoot);
-            $filename = $this->vendors[$root] . DIRECTORY_SEPARATOR . $classPath .".php";
+            $classNameWithoutRoot = $this->removeNamespaceVendor($vendor, $className);
+            $classPath = str_replace("\\", "/", $classNameWithoutRoot);
+            $filename = $this->vendors[$vendor] . DIRECTORY_SEPARATOR . $classPath .".php";
 
             return $this->tryToRequire($filename, $className);
         }
 
         return false;
+    }
+
+    protected function getVendorFromClassName($className)
+    {
+        foreach ($this->vendors as $vendor => $path)
+        {
+            if (strpos($className, $vendor) === 0)
+                return $vendor;
+        }
+
+        return null;
     }
 
     protected function tryToRequire($filename, $className)
@@ -50,23 +61,8 @@ class GenericAutoloader
         return false;
     }
 
-    protected function getNamespaceRoot($className)
+    protected function removeNamespaceVendor($vendor, $className)
     {
-        $i = strpos($className, '\\');
-
-        if ($i === false)
-            return $className;
-
-        return substr($className, 0, $i);
-    }
-
-    protected function removeNamespaceRoot($className)
-    {
-        $i = strpos($className, '\\');
-
-        if ($i === false)
-            return $className;
-
-        return substr($className, $i + 1);
+        return ltrim(mb_substr($className, mb_strlen($vendor)), "\\");
     }
 }
